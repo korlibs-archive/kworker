@@ -1,0 +1,123 @@
+
+val isNodeJs by lazy { js("(typeof process === 'object' && typeof require === 'function')").unsafeCast<Boolean>() }
+val isWeb by lazy { js("(typeof window === 'object')").unsafeCast<Boolean>() }
+val isWorker by lazy { js("(typeof importScripts === 'function')").unsafeCast<Boolean>() }
+val isShell get() = !isWeb && !isNodeJs && !isWorker
+
+fun HTMLCollection.toList(): List<Element?> = (0 until length).map { this[it] }
+fun <T : Element> HTMLCollection.toTypedList(): List<T> = (0 until length).map { this[it].unsafeCast<T>() }
+
+actual val KorioNative2 = object : KorioNative2Class() {
+	override suspend fun startJsWorker(context: CoroutineDispatcher) {
+		val worker = js("(worker)")
+		console.log("worker started")
+		worker.onmessage = { event: MessageEvent ->
+			console.log("worker event: $event")
+		}
+	}
+
+	private val workerReady = CompletableDeferred<Unit>()
+	private var worker: Worker? = null
+
+	private val results = LinkedHashMap<Int, CompletableDeferred<*>>()
+
+	override suspend fun ensureJsWorker() {
+		if (OS.isJsWorker) return
+		if (OS.isJsNodeJs) return // Not using Node.JS
+		if (worker == null) {
+			fun String.isRequireJs() = contains("require.min.js") || contains("require.js")
+
+			val scriptNodes = document.getElementsByTagName("script").toTypedList<HTMLScriptElement>()
+			val scripts = scriptNodes.map { it.src }.filter { it.isNotBlank() }
+			val requireJs = scriptNodes.firstOrNull { it.src.isRequireJs() }
+			val dataMain = requireJs?.getAttribute("data-main")
+
+			worker = Worker("korio-worker.js").apply {
+				addEventListener("message", { _e ->
+					val e = _e.unsafeCast<MessageEvent>()
+					val data = e.data.asDynamic()
+					val type = data.type.toString()
+					when (type) {
+						"worker_ready" -> workerReady.complete(Unit)
+						"worker_error" -> workerReady.completeExceptionally(RuntimeException("worker_error"))
+						"result" -> {
+							val deferred = results[data.id].unsafeCast<CompletableDeferred<dynamic>?>()
+							//console.log("processing result", "deferred", deferred)
+							if (data.exception != null) {
+								deferred?.completeExceptionally(RuntimeException("${data.exception}"))
+							} else {
+								deferred?.complete(data.result)
+							}
+						}
+					}
+				})
+				postMessage(jsObject("type" to "import", "url" to "https://requirejs.org/docs/release/2.3.6/comments/require.js"))
+				postMessage(jsObject("type" to "eval", "script" to "requirejs.config({baseUrl: ${jsbaseUrl.quoted}, paths: {}});"))
+				postMessage(
+					jsObject(
+						"type" to "eval",
+						"script" to "require([${dataMain.quote()}], function(mainModule) { self.mainModule = mainModule; self.allModules = require.s.contexts._.defined; postMessage({ type: 'worker_ready' }); }, function(e) { console.error(e); postMessage({ type: 'worker_error' }); });"
+					)
+				)
+			}
+		}
+		workerReady.await()
+		//worker?.postMessage(jsObject("type" to "import", "url" to "require.min.js"))
+	}
+
+	var lastId = 0
+	override suspend fun <T, R> executeInWorker(arg: T, func: (T) -> R, currentModule: Any?): R {
+		ensureJsWorker()
+		val korioModule = getCurrentModule()
+		val requireJsModules = js("(require.s.contexts._.defined)")
+		val currentModuleName = jsToArray(jsObjectKeys(requireJsModules)).firstOrNull { requireJsModules[it] === currentModule }
+
+		//console.log(func)
+		//console.log(func.asDynamic().name)
+		//console.log("korioModule", korioModule)
+		//console.log("getCurrentModule", currentModule)
+		//console.log("currentModuleName", currentModuleName)
+		//console.log("func", "$func")
+		globalDynamic.lastfunc = func
+		var id = lastId++
+		val result = Regex("return (.*?)\\(").find("$func")
+		if (result == null) {
+			error("Error calling function in worker ($func)")
+		} else {
+			val deferred = CompletableDeferred<R>()
+			results[id] = deferred
+			worker?.postMessage(jsObject("type" to "func", "funcName" to result.groupValues[1], "module" to currentModuleName, "arg" to arg, "id" to id) as? Any)
+			return deferred.await()
+		}
+	}
+}
+
+actual inline fun getCurrentModule(): Any? = js("(eval('_'))")
+
+
+-------------------------------
+
+self.onmessage = function(e) {
+	if (e.data.type == 'import') {
+		importScripts(e.data.url);
+	} else if (e.data.type == 'eval') {
+		eval(e.data.script);
+	} else if (e.data.type == 'func') {
+		const funcName = e.data.funcName;
+		const id = e.data.id;
+		const arg = e.data.arg;
+		const moduleName = e.data.module;
+		const module = require.s.contexts._.defined[moduleName]
+		const func = module[funcName]
+		//console.log('funcName', funcName, 'id', id, 'arg', arg, 'moduleName', moduleName, 'func', func, 'module', module);
+		//Object.keys(module)
+		var sample = module.sample
+		try {
+			const result = func.call(module, arg);
+			postMessage({ 'type': 'result', 'id': id, 'result': result, 'exception': null })
+		} catch (e) {
+			postMessage({ 'type': 'result', 'id': id, 'result': null, 'exception': e })
+		}
+		//func(arg);
+	}
+};

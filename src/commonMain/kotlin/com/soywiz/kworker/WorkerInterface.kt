@@ -31,7 +31,7 @@ internal open class WorkerCls {
         return work.executeInternal(arg)
     }
 
-    open suspend fun isWorker(): Boolean {
+    open fun isWorker(): Boolean {
         return false
     }
 }
