@@ -27,13 +27,24 @@ fun main(args: Array<String>) {
             worker1.send(WorkerMessage("hello", "world"))
             worker1.send(WorkerMessage("hello", "world"))
             worker1.send(WorkerMessage("hello", "world"))
-            println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
-            println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
-            println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
+
+            val workerId = getWorkerId()
+            println("IN MAIN $workerId ${worker1.recv()}")
+            println("IN MAIN $workerId ${worker1.recv()}")
+            println("IN MAIN $workerId ${worker1.recv()}")
             worker2.send(WorkerMessage("hello", "world"))
             worker2.send(WorkerMessage("hello", "world"))
-            println("IN MAIN ${getWorkerId()} ${worker2.recv()}")
-            println("IN MAIN ${getWorkerId()} ${worker2.recv()}")
+            println("IN MAIN $workerId ${worker2.recv()}")
+            println("IN MAIN $workerId ${worker2.recv()}")
+
+            // @TODO: Kotlin.JS BUG! getWorkerId() is not appended
+            //println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
+            //println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
+            //println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
+            //worker2.send(WorkerMessage("hello", "world"))
+            //worker2.send(WorkerMessage("hello", "world"))
+            //println("IN MAIN ${getWorkerId()} ${worker2.recv()}")
+            //println("IN MAIN ${getWorkerId()} ${worker2.recv()}")
         })
     }
 }

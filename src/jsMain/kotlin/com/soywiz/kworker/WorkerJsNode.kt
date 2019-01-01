@@ -8,8 +8,6 @@ import kotlin.coroutines.*
 val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
     val cluster by lazy { js("(require('cluster'))") }
 
-    val workerId by lazy { js("(process.env.KWORKER_PID)") ?: 0 }
-
     private var lastWorkerId = 1
 
     private val workers = arrayListOf<WorkerChannel>()
@@ -119,7 +117,7 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
         }
     }
 
-    override suspend fun getWorkerId(): Int = workerId
+    override suspend fun getWorkerId(): Int = if (cluster.isMaster) 0 else js("parseInt(process.env.KWORKER_PID) || 0")
 
     override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {
         CoroutineScope(context).launch { callback() }
