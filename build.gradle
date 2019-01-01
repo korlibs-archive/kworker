@@ -195,23 +195,26 @@ allprojects {
 
     ext.generatePom = generatePom
 
-    def publishUser = rootProject.findProperty('BINTRAY_USER') ?: project.findProperty('bintrayUser') ?: System.getenv('BINTRAY_USER')
-    def publishPassword = rootProject.findProperty('BINTRAY_KEY') ?: project.findProperty('bintrayApiKey') ?: System.getenv('BINTRAY_API_KEY')
+    //println(project.name)
+    if (project.name != "kworker-sample") {
+        def publishUser = rootProject.findProperty('BINTRAY_USER') ?: project.findProperty('bintrayUser') ?: System.getenv('BINTRAY_USER')
+        def publishPassword = rootProject.findProperty('BINTRAY_KEY') ?: project.findProperty('bintrayApiKey') ?: System.getenv('BINTRAY_API_KEY')
 
-    if (publishUser && publishPassword) {
-        publishing {
-            repositories {
-                maven {
-                    credentials {
-                        username publishUser
-                        password publishPassword
+        if (publishUser && publishPassword) {
+            publishing {
+                repositories {
+                    maven {
+                        credentials {
+                            username publishUser
+                            password publishPassword
+                        }
+                        url "https://api.bintray.com/maven/soywiz/soywiz/${project.property('project.package')}/"
                     }
-                    url "https://api.bintray.com/maven/soywiz/soywiz/${project.property('project.package')}/"
                 }
-            }
 
-            configure(publications) {
-                generatePom(pom)
+                configure(publications) {
+                    generatePom(pom)
+                }
             }
         }
     }
