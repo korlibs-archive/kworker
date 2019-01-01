@@ -67,9 +67,9 @@ suspend fun JobsMain(register: suspend JobsRegister.() -> Unit, main: suspend Co
         })
         while (true) {
             val message = recv()
-            val descriptor = descriptors[message.type]
+            val descriptor = descriptors[message.type] ?: error("Task descriptor '${message.type}' not registered in Worker")
             val id = message.args[0] as Int
-            val result = descriptor!!.execute(message.args.sliceArray(1 until message.args.size) as Array<Any?>)
+            val result = descriptor.execute(message.args.sliceArray(1 until message.args.size) as Array<Any?>)
             send(WorkerMessage(descriptor.getName(), id, *result))
         }
     }, {
@@ -77,8 +77,8 @@ suspend fun JobsMain(register: suspend JobsRegister.() -> Unit, main: suspend Co
     })
 }
 
-fun JobsMainSync(register: suspend JobsRegister.() -> Unit, main: suspend CoroutineScope.() -> Unit) {
-    WorkerInterfaceImpl.runEntry(EmptyCoroutineContext) {
+fun JobsMainSync(register: suspend JobsRegister.() -> Unit, main: suspend CoroutineScope.() -> Unit, coroutineContext: CoroutineContext = EmptyCoroutineContext) {
+    WorkerInterfaceImpl.runEntry(coroutineContext) {
         JobsMain(register, main)
     }
 }

@@ -15,10 +15,6 @@ class WorkerTest {
     fun JobsRegister.registerXorJob() = register(DemoXorJob)
     suspend fun ByteArray.xor(jobs: Jobs): ByteArray = jobs.execute(DemoXorJob, arrayOf(this))[0] as ByteArray
 
-    object Demo {
-        var demo = 10
-    }
-
     @Test
     fun test() = suspendTest {
         val jobs = Jobs() // We should be able to call it without the entry point, but it will be executed in the same process
