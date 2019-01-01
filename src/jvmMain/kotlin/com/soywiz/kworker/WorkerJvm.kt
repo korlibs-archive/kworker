@@ -78,13 +78,19 @@ internal class MyWorkerChannel : WorkerChannel {
 //}
 
 actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
-    override fun getThreadId(): Int {
-        return Thread.currentThread().id.toInt()
+    override fun getWorkerId(): Int {
+        //println("$threadIdToWorkerId :: ${Thread.currentThread().id}")
+
+        return threadIdToWorkerId[Thread.currentThread().id] ?: 0
     }
 
     private val workers = LinkedHashSet<WorkerChannel>()
+    private val threadIdToWorkerId = ConcurrentHashMap<Long, Int>()
+
+    private var lastWorkerId = 1
 
     override suspend fun Worker(): WorkerChannel {
+        val workerId = lastWorkerId++
         val toWorker: WorkerChannel = MyWorkerChannel()
         val fromWorker: WorkerChannel = MyWorkerChannel()
 
@@ -115,6 +121,7 @@ actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
 
         val entryPoint = Runnable {
             runEntry(newSingleThreadContext("Worker")) {
+                threadIdToWorkerId[Thread.currentThread().id] = workerId
                 try {
                     val workerLambda = workerLambda
                     (workerLambda ?: error("Must call WorkerFork at the beginning")).invoke(object : WorkerChannel {
@@ -128,6 +135,8 @@ actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
                     })
                 } catch (e: WorkerInterruptException) {
                 } catch (e: InterruptedException) {
+                } finally {
+                    threadIdToWorkerId.remove(Thread.currentThread().id)
                 }
             }
         }

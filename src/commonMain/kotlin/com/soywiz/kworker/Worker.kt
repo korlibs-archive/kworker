@@ -53,7 +53,7 @@ internal class MyWorkerChannel2 : WorkerChannel {
 }
 
 abstract class WorkerInterface {
-    open fun getThreadId(): Int = -1
+    open fun getWorkerId(): Int = -1
     private var workerCode: (suspend WorkerChannel.() -> Unit)? = null
 
     private val workers = LinkedHashSet<WorkerChannel>()
@@ -110,7 +110,7 @@ abstract class WorkerInterface {
 
 expect val WorkerInterfaceImpl: WorkerInterface
 
-fun getThreadId() = WorkerInterfaceImpl.getThreadId()
+fun getWorkerId() = WorkerInterfaceImpl.getWorkerId()
 suspend fun Worker(): WorkerChannel = WorkerInterfaceImpl.Worker()
 suspend fun WorkerFork(worker: suspend WorkerChannel.() -> Unit, main: suspend CoroutineScope.() -> Unit): Unit = WorkerInterfaceImpl.WorkerFork(worker, main)
 

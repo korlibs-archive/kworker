@@ -34,7 +34,6 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
         val requireJsScript = scripts.firstOrNull { it.src.contains("require.js") || it.src.contains("require.min.js") }
         val declaredMain = requireJsScript?.getAttribute("data-main")
 
-        //val bootstrapUrl = "kworker-helper.js"
         val bootstrapUrl = URL.createObjectURL(Blob(arrayOf("""
             self.onmessage = function(e) {
                 if (e.data.type == 'import') {
@@ -55,7 +54,7 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
         if (declaredMain != null) {
             jsWorker.postMessage(jsObject("type" to "import", "urls" to arrayOf(requireJsScript.src)))
             jsWorker.postMessage(jsObject("type" to "eval", "script" to "requirejs.config({ baseUrl: ${baseUrl.quote()} });"))
-            jsWorker.postMessage(jsObject("type" to "eval", "script" to "require([${declaredMain.quote()}], function(module) { console.log('loaded'); }, function(e) { console.error(e); });"))
+            jsWorker.postMessage(jsObject("type" to "eval", "script" to "require([${declaredMain.quote()}], function(module) { }, function(e) { console.error(e); });"))
         }else {
             jsWorker.postMessage(jsObject("type" to "import", "urls" to scripts.filter { !it.src.isNullOrBlank() }.map { it.src }.toTypedArray()))
         }
@@ -65,12 +64,16 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
 
         jsWorker.onmessage = { e: MessageEvent ->
             val data = e.data.asDynamic()
-            console.log("MAIN received message", e)
             when (data.type.toString()) {
                 "ready" -> {
                     ready.complete(Unit)
                 }
                 "message" -> {
+                    val type = data.kind.toString()
+                    val args = data.args as Array<Any?>
+                    coroutineScope.launch {
+                        channel.send(WorkerMessage(type, *args))
+                    }
                 }
             }
             Unit
@@ -105,23 +108,42 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
             val channel = Channel<WorkerMessage>()
 
             self.onmessage = { e: MessageEvent ->
-                console.log("RECEIVED MESSAGE ON WORKER", e)
+                //console.log("RECEIVED MESSAGE ON WORKER", e)
+                val data = e.data.asDynamic()
+                when (data.type.toString()) {
+                    "terminate" -> {
+                        channel.close()
+                    }
+                    "message" -> {
+                        val type = data.kind.toString()
+                        val args = data.args as Array<Any?>
+                        coroutineScope.launch {
+                            channel.send(WorkerMessage(type, *args))
+                        }
+                    }
+                }
+                Unit
             }
 
             self.postMessage(jsObject("type" to "ready"))
 
-            worker(object : WorkerChannel {
-                override suspend fun send(message: WorkerMessage) {
-                    self.postMessage(jsObject("type" to "message", "kind" to message.type, "args" to message.args))
-                }
-                override suspend fun recv(): WorkerMessage = channel.receive()
-                override fun terminate(): Unit = run { channel.close() }
-            })
+            try {
+                worker(object : WorkerChannel {
+                    override suspend fun send(message: WorkerMessage) {
+                        self.postMessage(jsObject("type" to "message", "kind" to message.type, "args" to message.args))
+                    }
+
+                    override suspend fun recv(): WorkerMessage = channel.receive()
+                    override fun terminate(): Unit = run { channel.close() }
+                })
+            } catch (e: Throwable) {
+                console.error(e)
+            }
         }
     }
 
-    override fun getThreadId(): Int {
-        return self.name.toString().split("-").last().toIntOrNull() ?: -1
+    override fun getWorkerId(): Int {
+        return self.name.toString().split("-").last().toIntOrNull() ?: 0
     }
 
     override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {

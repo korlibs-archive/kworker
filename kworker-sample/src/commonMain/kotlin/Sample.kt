@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
         WorkerFork({
             while (true) {
                 val message = recv()
-                println("IN WORKER ${getThreadId()} $message")
+                println("IN WORKER ${getWorkerId()} $message")
                 send(WorkerMessage("reply", "demo"))
             }
         }, {
@@ -29,8 +29,8 @@ fun main(args: Array<String>) {
             worker2.send(WorkerMessage("hello", "world"))
             worker1.send(WorkerMessage("hello", "world"))
             worker2.send(WorkerMessage("hello", "world"))
-            println("IN MAIN ${getThreadId()} ${worker1.recv()}")
-            println("IN MAIN ${getThreadId()} ${worker2.recv()}")
+            println("IN MAIN ${getWorkerId()} ${worker1.recv()}")
+            println("IN MAIN ${getWorkerId()} ${worker2.recv()}")
         })
     }
 }

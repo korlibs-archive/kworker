@@ -3,7 +3,6 @@ package com.soywiz.kworker
 import com.soywiz.kworker.internal.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import org.w3c.dom.*
 import kotlin.coroutines.*
 
 val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
@@ -18,10 +17,11 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
     override suspend fun Worker(): WorkerChannel {
         val coroutineScope = CoroutineScope(coroutineContext)
         val workerId = lastWorkerId++
-        if (cluster.isMaster) error("Can't create Worker inside another worker")
+        if (!cluster.isMaster) error("Can't create Worker inside another worker")
 
         // https://nodejs.org/docs/latest/api/cluster.html#cluster_cluster_fork_env
-        val nodeWorker = cluster.fork(jsObject("KWORKER_PID" to workerId))
+        val env = jsObject("KWORKER_PID" to workerId)
+        val nodeWorker = cluster.fork(env)
 
         val ready = CompletableDeferred<Unit>()
 
@@ -71,6 +71,7 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
             try {
                 main(coroutineScope)
             } catch (e: Throwable) {
+                console.error(e)
                 exitCode = -1
                 throw e
             } finally {
@@ -118,12 +119,7 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
         }
     }
 
-    override fun getThreadId(): Int {
-        return when {
-            ENVIRONMENT_IS_NODE -> workerId
-            else -> super.getThreadId()
-        }
-    }
+    override fun getWorkerId(): Int = workerId
 
     override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {
         CoroutineScope(context).launch { callback() }
