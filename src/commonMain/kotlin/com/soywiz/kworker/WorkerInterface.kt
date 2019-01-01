@@ -1,8 +1,5 @@
 package com.soywiz.kworker
 
-import com.soywiz.kworker.WorkerSample.demoXor
-import kotlin.jvm.*
-
 interface WorkDescriptor<T, R> {
     suspend fun executeInternal(arg: T): R
 }
@@ -27,11 +24,14 @@ internal object InternalWorkerInterfaceRegister : WorkerInterfaceRegister {
 }
 
 internal open class WorkerCls {
-    suspend fun <T, R> executeInWorker(work: WorkDescriptor<T, R>, arg: T): R {
+    open fun callAfterRegister() {
+    }
+
+    open suspend fun <T, R> executeInWorker(work: WorkDescriptor<T, R>, arg: T): R {
         return work.executeInternal(arg)
     }
 
-    suspend fun isWorker(): Boolean {
+    open suspend fun isWorker(): Boolean {
         return false
     }
 }
@@ -62,32 +62,8 @@ suspend fun WorkerEntry(register: suspend WorkerInterfaceRegister.() -> Unit, ma
     workerRegister = register
     workerMain = main
     register(InternalWorkerInterfaceRegister)
+    WorkerImpl.callAfterRegister()
     if (!WorkerImpl.isWorker()) {
         main()
     }
 }
-
-////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////
-
-object WorkerSample {
-    object DemoXorWork : WorkDescriptor<ByteArray, ByteArray> {
-        override suspend fun executeInternal(arg: ByteArray): ByteArray {
-            val out = ByteArray(arg.size)
-            for (n in out.indices) out[n] = (arg[n].toInt() xor 0x77).toByte()
-            return out
-        }
-    }
-
-    suspend fun ByteArray.demoXor(): ByteArray = Workers.execute(DemoXorWork, this)
-
-}
-
-suspend fun main(args: Array<String>) {
-    WorkerEntry({
-        register(WorkerSample.DemoXorWork)
-    }) {
-        println(byteArrayOf(1, 2, 3).demoXor().toList())
-    }
-}
-
