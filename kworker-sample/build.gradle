@@ -66,7 +66,9 @@ IN WORKER 2 WorkerMessage[hello](world)
 IN MAIN 0 WorkerMessage[reply](demo)
 IN MAIN 0 WorkerMessage[reply](demo)
 """
-    assert(output.toString().readLines().toSorted() == expectedOutput.readLines().toSorted())
+    def actual =  output.toString().readLines().toSorted()
+    def expected = expectedOutput.readLines().toSorted()
+    assert(actual == expected)
 }
 
 afterEvaluate {
