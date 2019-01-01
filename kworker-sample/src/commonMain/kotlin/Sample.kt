@@ -23,6 +23,7 @@ fun main(args: Array<String>) {
         }, {
             val worker1 = Worker()
             val worker2 = Worker()
+            println("Sending messages")
             worker1.send(WorkerMessage("hello", "world"))
             worker1.send(WorkerMessage("hello", "world"))
             worker2.send(WorkerMessage("hello", "world"))

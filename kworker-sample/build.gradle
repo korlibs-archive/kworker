@@ -10,4 +10,9 @@ afterEvaluate {
         workingDir linkDebugExecutableMacosX64.outputFile.get().parentFile
         commandLine linkDebugExecutableMacosX64.outputFile.get()
     }
+
+    //println(kotlin.targets.js.compilations.test.output)
+    task runJs(type: NodeTask, dependsOn: [kotlin.targets.js.compilations.test.compileKotlinTaskName, installMocha, populateNodeModules]) {
+        script = new File(buildDir, "node_modules/${project.name}.js")
+    }
 }
