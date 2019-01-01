@@ -119,7 +119,7 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
         }
     }
 
-    override fun getWorkerId(): Int = workerId
+    override suspend fun getWorkerId(): Int = workerId
 
     override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {
         CoroutineScope(context).launch { callback() }

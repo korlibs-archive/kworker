@@ -52,17 +52,26 @@ internal class MyWorkerChannel2 : WorkerChannel {
     }
 }
 
+class WorkerIdContext(val workerId: Int) : CoroutineContext.Element {
+    companion object Key : CoroutineContext.Key<WorkerIdContext>
+    override val key: CoroutineContext.Key<*> = Key
+}
+
 abstract class WorkerInterface {
-    open fun getWorkerId(): Int = -1
+    open suspend fun getWorkerId(): Int = coroutineContext[WorkerIdContext.Key]?.workerId ?: 0
     private var workerCode: (suspend WorkerChannel.() -> Unit)? = null
 
     private val workers = LinkedHashSet<WorkerChannel>()
 
+    private var lastWorkerId = 1
+
     open suspend fun Worker(): WorkerChannel {
+        val workerId = lastWorkerId++
+
         val toWorker: WorkerChannel = MyWorkerChannel2()
         val fromWorker: WorkerChannel = MyWorkerChannel2()
 
-        CoroutineScope(coroutineContext).launch {
+        CoroutineScope(coroutineContext + WorkerIdContext(workerId)).launch {
             try {
                 workerCode?.invoke(object : WorkerChannel {
                     override fun terminate() {
@@ -110,7 +119,7 @@ abstract class WorkerInterface {
 
 expect val WorkerInterfaceImpl: WorkerInterface
 
-fun getWorkerId() = WorkerInterfaceImpl.getWorkerId()
+suspend fun getWorkerId() = WorkerInterfaceImpl.getWorkerId()
 suspend fun Worker(): WorkerChannel = WorkerInterfaceImpl.Worker()
 suspend fun WorkerFork(worker: suspend WorkerChannel.() -> Unit, main: suspend CoroutineScope.() -> Unit): Unit = WorkerInterfaceImpl.WorkerFork(worker, main)
 

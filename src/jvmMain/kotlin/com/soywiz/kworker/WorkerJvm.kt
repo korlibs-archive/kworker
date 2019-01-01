@@ -78,7 +78,7 @@ internal class MyWorkerChannel : WorkerChannel {
 //}
 
 actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
-    override fun getWorkerId(): Int {
+    override suspend fun getWorkerId(): Int {
         //println("$threadIdToWorkerId :: ${Thread.currentThread().id}")
 
         return threadIdToWorkerId[Thread.currentThread().id] ?: 0

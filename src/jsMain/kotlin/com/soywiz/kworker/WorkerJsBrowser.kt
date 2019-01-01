@@ -142,7 +142,7 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
         }
     }
 
-    override fun getWorkerId(): Int {
+    override suspend fun getWorkerId(): Int {
         return self.name.toString().split("-").last().toIntOrNull() ?: 0
     }
 

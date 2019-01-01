@@ -46,3 +46,50 @@ afterEvaluate {
 
     }
 }
+
+def expectedOutput = """Sending messages
+IN WORKER 1 WorkerMessage[hello](world)
+IN WORKER 1 WorkerMessage[hello](world)
+IN WORKER 1 WorkerMessage[hello](world)
+IN MAIN 0 WorkerMessage[reply](demo)
+IN MAIN 0 WorkerMessage[reply](demo)
+IN MAIN 0 WorkerMessage[reply](demo)
+IN WORKER 2 WorkerMessage[hello](world)
+IN WORKER 2 WorkerMessage[hello](world)
+IN MAIN 0 WorkerMessage[reply](demo)
+IN MAIN 0 WorkerMessage[reply](demo)
+"""
+
+afterEvaluate {
+    task checkIntegrationJvm(type: JavaExec, dependsOn: [jvmTestClasses]) {
+        classpath = kotlin.targets.jvm.compilations.test.runtimeDependencyFiles
+        main = "SampleKt"
+        standardOutput = new ByteArrayOutputStream()
+        doLast {
+            assert(standardOutput.toString() == expectedOutput)
+        }
+    }
+
+    task checkIntegrationNodeJs(type: Exec, dependsOn: [kotlin.targets.js.compilations.test.compileKotlinTaskName, installMocha, populateNodeModules]) {
+        commandLine node.variant.nodeExec, new File(buildDir, "node_modules/${project.name}.js")
+        standardOutput = new ByteArrayOutputStream()
+
+        doLast {
+            assert(standardOutput.toString() == expectedOutput)
+        }
+    }
+
+    //task checkIntegrationNative(type: Exec, dependsOn: [linkDebugExecutableMacosX64]) {
+    //    workingDir linkDebugExecutableMacosX64.outputFile.get().parentFile
+    //    commandLine linkDebugExecutableMacosX64.outputFile.get()
+    //    standardOutput = new ByteArrayOutputStream()
+//
+    //    doLast {
+    //        assert(standardOutput.toString() == expectedOutput)
+    //    }
+    //}
+
+    tasks.check.finalizedBy checkIntegrationJvm
+    tasks.check.finalizedBy checkIntegrationNodeJs
+    //tasks.check.finalizedBy checkIntegrationNative
+}
