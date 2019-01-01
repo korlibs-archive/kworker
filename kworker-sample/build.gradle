@@ -53,7 +53,8 @@ afterEvaluate {
     }
 }
 
-def expectedOutput = """Sending messages
+def checkOutput(String output) {
+    def expectedOutput = """Sending messages
 IN WORKER 1 WorkerMessage[hello](world)
 IN WORKER 1 WorkerMessage[hello](world)
 IN WORKER 1 WorkerMessage[hello](world)
@@ -65,6 +66,8 @@ IN WORKER 2 WorkerMessage[hello](world)
 IN MAIN 0 WorkerMessage[reply](demo)
 IN MAIN 0 WorkerMessage[reply](demo)
 """
+    assert(output.toString().readLines().toSorted() == expectedOutput.readLines().toSorted())
+}
 
 afterEvaluate {
     task checkIntegrationJvm(type: JavaExec, dependsOn: [jvmTestClasses]) {
@@ -72,7 +75,7 @@ afterEvaluate {
         main = "SampleKt"
         standardOutput = new ByteArrayOutputStream()
         doLast {
-            assert(standardOutput.toString() == expectedOutput)
+            checkOutput(standardOutput.toString())
         }
     }
 
@@ -81,22 +84,22 @@ afterEvaluate {
         standardOutput = new ByteArrayOutputStream()
 
         doLast {
-            assert(standardOutput.toString() == expectedOutput)
+            checkOutput(standardOutput.toString())
         }
     }
 
-    def linkTaskName = "linkDebugExecutableMacosX64"
+    String nativeLinkTaskName = "linkDebugExecutableMacosX64"
 
     if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_UNIX)) {
-        linkTaskName = "linkDebugExecutableLinuxX64"
+        nativeLinkTaskName = "linkDebugExecutableLinuxX64"
     }
     if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS)) {
-        linkTaskName = "linkDebugExecutableMingwX64"
+        nativeLinkTaskName = "linkDebugExecutableMingwX64"
     }
     if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC)) {
-        linkTaskName = "linkDebugExecutableMacosX64"
+        nativeLinkTaskName = "linkDebugExecutableMacosX64"
     }
-    def linkTask = project.tasks.findByName(linkTaskName)
+    def linkTask = project.tasks.findByName(nativeLinkTaskName)
 
     task checkIntegrationNative(type: Exec, dependsOn: [linkTask]) {
         workingDir linkTask.outputFile.get().parentFile
@@ -104,7 +107,7 @@ afterEvaluate {
         standardOutput = new ByteArrayOutputStream()
 
         doLast {
-            assert(standardOutput.toString() == expectedOutput)
+            checkOutput(standardOutput.toString())
         }
     }
 
