@@ -4,6 +4,7 @@ dependencies {
 
 kotlin.targets.macosX64.compilations.main.outputKinds("EXECUTABLE")
 kotlin.targets.mingwX64.compilations.main.outputKinds("EXECUTABLE")
+kotlin.targets.linuxX64.compilations.main.outputKinds("EXECUTABLE")
 
 afterEvaluate {
     task runMacosX64(type: Exec, dependsOn: [linkDebugExecutableMacosX64]) {
@@ -14,6 +15,11 @@ afterEvaluate {
     task runMingwX64(type: Exec, dependsOn: [linkDebugExecutableMingwX64]) {
         workingDir linkDebugExecutableMingwX64.outputFile.get().parentFile
         commandLine linkDebugExecutableMingwX64.outputFile.get()
+    }
+
+    task runLinuxX64(type: Exec, dependsOn: [linkDebugExecutableLinuxX64]) {
+        workingDir linkDebugExecutableLinuxX64.outputFile.get().parentFile
+        commandLine linkDebugExecutableLinuxX64.outputFile.get()
     }
 
     //println(kotlin.targets.js.compilations.test.output)
@@ -79,17 +85,30 @@ afterEvaluate {
         }
     }
 
-    //task checkIntegrationNative(type: Exec, dependsOn: [linkDebugExecutableMacosX64]) {
-    //    workingDir linkDebugExecutableMacosX64.outputFile.get().parentFile
-    //    commandLine linkDebugExecutableMacosX64.outputFile.get()
-    //    standardOutput = new ByteArrayOutputStream()
-//
-    //    doLast {
-    //        assert(standardOutput.toString() == expectedOutput)
-    //    }
-    //}
+    def linkTaskName = "linkDebugExecutableMacosX64"
+
+    if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_UNIX)) {
+        linkTaskName = "linkDebugExecutableLinuxX64"
+    }
+    if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS)) {
+        linkTaskName = "linkDebugExecutableMingwX64"
+    }
+    if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC)) {
+        linkTaskName = "linkDebugExecutableMacosX64"
+    }
+    def linkTask = project.tasks.findByName(linkTaskName)
+
+    task checkIntegrationNative(type: Exec, dependsOn: [linkTask]) {
+        workingDir linkTask.outputFile.get().parentFile
+        commandLine linkTask.outputFile.get()
+        standardOutput = new ByteArrayOutputStream()
+
+        doLast {
+            assert(standardOutput.toString() == expectedOutput)
+        }
+    }
 
     tasks.check.finalizedBy checkIntegrationJvm
     tasks.check.finalizedBy checkIntegrationNodeJs
-    //tasks.check.finalizedBy checkIntegrationNative
+    tasks.check.finalizedBy checkIntegrationNative
 }
