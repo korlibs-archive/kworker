@@ -11,8 +11,38 @@ afterEvaluate {
         commandLine linkDebugExecutableMacosX64.outputFile.get()
     }
 
+    task runMingwX64(type: Exec, dependsOn: [linkDebugExecutableMingwX64]) {
+        workingDir linkDebugExecutableMingwX64.outputFile.get().parentFile
+        commandLine linkDebugExecutableMingwX64.outputFile.get()
+    }
+
     //println(kotlin.targets.js.compilations.test.output)
     task runJs(type: NodeTask, dependsOn: [kotlin.targets.js.compilations.test.compileKotlinTaskName, installMocha, populateNodeModules]) {
         script = new File(buildDir, "node_modules/${project.name}.js")
+    }
+
+    task runJvm(type: JavaExec, dependsOn: [jvmTestClasses]) {
+        classpath = kotlin.targets.jvm.compilations.test.runtimeDependencyFiles
+        main = "SampleKt"
+    }
+}
+
+afterEvaluate {
+    task jsWeb(type: Copy, dependsOn: []) {
+        from kotlin.targets.js.compilations.main.output.allOutputs
+        kotlin.targets.js.compilations.test.runtimeDependencyFiles.each {
+            if (it.exists()) {
+                if (!it.isDirectory()) {
+                    from zipTree(it.absolutePath)
+                } else {
+                    from it
+                }
+            }
+        }
+        kotlin.targets.js.compilations.main.kotlinSourceSets.resources.collectMany { it.srcDirs }.each {
+            from it
+        }
+        into "$buildDir/web"
+
     }
 }
