@@ -4,6 +4,7 @@ import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.*
 
+/*
 class WorkerExec(val jobs: ConcurrentLinkedDeque<Runnable>) : Runnable {
     override fun run() {
         while (true) {
@@ -77,3 +78,4 @@ internal actual val WorkerImpl: WorkerCls = object : WorkerCls() {
         return super.isWorker()
     }
 }
+*/

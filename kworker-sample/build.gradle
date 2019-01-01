@@ -1,0 +1,13 @@
+dependencies {
+    commonMainApi rootProject
+}
+
+kotlin.targets.macosX64.compilations.main.outputKinds("EXECUTABLE")
+kotlin.targets.mingwX64.compilations.main.outputKinds("EXECUTABLE")
+
+afterEvaluate {
+    task runMacosX64(type: Exec, dependsOn: [linkDebugExecutableMacosX64]) {
+        workingDir linkDebugExecutableMacosX64.outputFile.get().parentFile
+        commandLine linkDebugExecutableMacosX64.outputFile.get()
+    }
+}

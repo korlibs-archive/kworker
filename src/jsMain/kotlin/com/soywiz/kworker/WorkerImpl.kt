@@ -2,6 +2,7 @@ package com.soywiz.kworker
 
 import org.w3c.dom.*
 
+/*
 var ENVIRONMENT_IS_NODE = js("(typeof process === 'object' && typeof require === 'function')")
 var ENVIRONMENT_IS_WEB = js("(typeof window === 'object')")
 var ENVIRONMENT_IS_WORKER = js("(typeof importScripts === 'function')")
@@ -53,3 +54,4 @@ internal actual val WorkerImpl: WorkerCls = object : WorkerCls() {
         return ENVIRONMENT_IS_WORKER
     }
 }
+*/

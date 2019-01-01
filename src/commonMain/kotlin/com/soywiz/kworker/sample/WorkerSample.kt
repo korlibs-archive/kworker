@@ -1,5 +1,6 @@
 package com.soywiz.kworker.sample
 
+/*
 import com.soywiz.kworker.*
 
 object WorkerSample {
@@ -21,3 +22,4 @@ suspend fun main(args: Array<String>) {
         println(byteArrayOf(1, 2, 3).demoXor().toList())
     }
 }
+*/
