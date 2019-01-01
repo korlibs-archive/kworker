@@ -78,6 +78,10 @@ internal class MyWorkerChannel : WorkerChannel {
 //}
 
 actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
+    override fun suspendTest(callback: suspend () -> Unit) {
+        runBlocking { callback() }
+    }
+
     override suspend fun getWorkerId(): Int {
         //println("$threadIdToWorkerId :: ${Thread.currentThread().id}")
 
@@ -180,6 +184,10 @@ actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
                 for (w in workers.toList()) w.terminate()
             }
         }
+    }
+
+    override fun WorkerIsAvailable(): Boolean {
+        return calledWorkerFork
     }
 
     override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {

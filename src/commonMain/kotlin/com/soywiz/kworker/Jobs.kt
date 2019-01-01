@@ -13,34 +13,41 @@ interface JobsRegister {
     fun register(descriptor: JobDescriptor)
 }
 
-class Jobs private constructor(val worker: WorkerChannel) {
+class Jobs private constructor(val worker: WorkerChannel?) {
     private val deferreds = LinkedHashMap<Int, CompletableDeferred<Array<Any?>>>()
     private var lastId = 0
     suspend fun execute(job: JobDescriptor, args: Array<Any?>): Array<Any?> {
-        val id = lastId++
-        val deferred = CompletableDeferred<Array<Any?>>()
-        deferreds[id] = deferred
-        worker.send(WorkerMessage(job.getName(), id, *args))
-        return deferred.await()
+        if (worker != null) {
+            val id = lastId++
+            val deferred = CompletableDeferred<Array<Any?>>()
+            deferreds[id] = deferred
+            worker.send(WorkerMessage(job.getName(), id, *args))
+            return deferred.await()
+        } else {
+            return job.execute(args)
+        }
     }
 
     fun terminate() {
-        worker.terminate()
+        worker?.terminate()
     }
 
     companion object {
         suspend operator fun invoke(scope: CoroutineScope): Jobs {
-            val jobs = Jobs(Worker())
-            scope.launch {
-                try {
-                    while (true) {
-                        val message = jobs.worker.recv()
-                        val id = message.args[0] as Int
-                        val args = message.args.sliceArray(1 until message.args.size)
-                        val deferred = jobs.deferreds.remove(id)
-                        deferred?.complete(args as Array<Any?>)
+            val worker = if (WorkerInterfaceImpl.WorkerIsAvailable()) Worker() else null
+            val jobs = Jobs(worker)
+            if (worker != null) {
+                scope.launch {
+                    try {
+                        while (true) {
+                            val message = worker.recv()
+                            val id = message.args[0] as Int
+                            val args = message.args.sliceArray(1 until message.args.size)
+                            val deferred = jobs.deferreds.remove(id)
+                            deferred?.complete(args as Array<Any?>)
+                        }
+                    } catch (e: WorkerInterruptException) {
                     }
-                } catch (e: WorkerInterruptException) {
                 }
             }
             return jobs

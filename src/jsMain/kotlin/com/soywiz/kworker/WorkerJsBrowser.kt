@@ -15,7 +15,7 @@ internal external class JsWorker(script: String, options: dynamic = definedExter
 
 private external val self: dynamic
 
-val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
+val WorkerInterfaceImplBrowser: WorkerInterface = object : BaseJsWorkerInterface() {
     val cluster by lazy { js("(require('cluster'))") }
 
     val workerId by lazy { js("(process.env.KWORKER_PID)") ?: 0 }
@@ -99,10 +99,15 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
         return worker
     }
 
+    private var WorkerForkExecutedInMain = false
+
+    override fun WorkerIsAvailable(): Boolean = WorkerForkExecutedInMain
+
     override suspend fun WorkerFork(worker: suspend WorkerChannel.() -> Unit, main: suspend CoroutineScope.() -> Unit) {
         val coroutineScope = CoroutineScope(coroutineContext)
 
         if (ENVIRONMENT_IS_WEB) {
+            WorkerForkExecutedInMain = true
             main(coroutineScope)
         } else {
             val channel = Channel<WorkerMessage>()
@@ -144,9 +149,5 @@ val WorkerInterfaceImplBrowser: WorkerInterface = object : WorkerInterface() {
 
     override suspend fun getWorkerId(): Int {
         return self.name.toString().split("-").last().toIntOrNull() ?: 0
-    }
-
-    override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {
-        CoroutineScope(context).launch { callback() }
     }
 }

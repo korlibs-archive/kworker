@@ -5,7 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlin.coroutines.*
 
-val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
+val WorkerInterfaceImplNode: WorkerInterface = object : BaseJsWorkerInterface() {
     val cluster by lazy { js("(require('cluster'))") }
 
     private var lastWorkerId = 1
@@ -61,10 +61,15 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
         return worker
     }
 
+    private var WorkerForkExecutedInMain = false
+
+    override fun WorkerIsAvailable(): Boolean = WorkerForkExecutedInMain
+
     override suspend fun WorkerFork(worker: suspend WorkerChannel.() -> Unit, main: suspend CoroutineScope.() -> Unit) {
         val coroutineScope = CoroutineScope(coroutineContext)
 
         if (cluster.isMaster) {
+            WorkerForkExecutedInMain = true
             var exitCode = 0
             try {
                 main(coroutineScope)
@@ -118,9 +123,5 @@ val WorkerInterfaceImplNode: WorkerInterface = object : WorkerInterface() {
     }
 
     override suspend fun getWorkerId(): Int = if (cluster.isMaster) 0 else js("parseInt(process.env.KWORKER_PID) || 0")
-
-    override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {
-        CoroutineScope(context).launch { callback() }
-    }
 }
 

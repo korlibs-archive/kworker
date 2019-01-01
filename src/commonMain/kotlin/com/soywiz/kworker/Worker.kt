@@ -113,12 +113,18 @@ abstract class WorkerInterface {
         }
     }
 
+    open fun WorkerIsAvailable(): Boolean = workerCode != null
+
     open fun runEntry(context: CoroutineContext, callback: suspend () -> Unit): Unit = TODO()
-    open fun getClassName(clazz: KClass<*>): String = TODO()
+    open fun getClassName(clazz: KClass<*>): String = clazz.simpleName ?: "unknown"
+
+    open fun suspendTest(callback: suspend () -> Unit): Unit = TODO()
 }
 
 expect val WorkerInterfaceImpl: WorkerInterface
 
+fun suspendTest(callback: suspend CoroutineScope.() -> Unit): Unit = WorkerInterfaceImpl.suspendTest { callback(CoroutineScope(coroutineContext)) }
 suspend fun getWorkerId() = WorkerInterfaceImpl.getWorkerId()
 suspend fun Worker(): WorkerChannel = WorkerInterfaceImpl.Worker()
+suspend fun WorkerIsAvailable(): Boolean = WorkerInterfaceImpl.WorkerIsAvailable()
 suspend fun WorkerFork(worker: suspend WorkerChannel.() -> Unit, main: suspend CoroutineScope.() -> Unit): Unit = WorkerInterfaceImpl.WorkerFork(worker, main)

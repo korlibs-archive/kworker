@@ -51,6 +51,10 @@ actual val WorkerInterfaceImpl: WorkerInterface = object : WorkerInterface() {
     }
     */
 
+    override fun suspendTest(callback: suspend () -> Unit) {
+        runBlocking { callback() }
+    }
+
     override fun runEntry(context: CoroutineContext, callback: suspend () -> Unit) {
         runBlocking(context) { callback() }
     }
