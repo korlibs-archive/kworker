@@ -16,10 +16,6 @@ internal external class JsWorker(script: String, options: dynamic = definedExter
 private external val self: dynamic
 
 val WorkerInterfaceImplBrowser: WorkerInterface = object : BaseJsWorkerInterface() {
-    val cluster by lazy { js("(require('cluster'))") }
-
-    val workerId by lazy { js("(process.env.KWORKER_PID)") ?: 0 }
-
     private var lastWorkerId = 1
 
     private val workers = arrayListOf<WorkerChannel>()
